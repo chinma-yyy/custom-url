@@ -37,8 +37,8 @@ app.get('/:code', (req, res) => {
                     return res.status(404).json('URL expired');
                 }
             }
-            res.json({ URL: url.original_url });
-            // return res.redirect(url.original_url);
+            // res.json({ URL: url.original_url });
+            return res.redirect(url.original_url);
         }
         else {
             return res.status(404).json('No URL found');
@@ -62,46 +62,56 @@ app.get('/:code/clicks',(req,res)=>{
 })
 
 app.post('/api', (req, res) => {
-    const url = req.params.link;
-    if (!req.params.code) {
+    const url = req.query.link;
+    console.log(url);
+    console.log(req.query.code);
+    if (!req.query.code) {
         const newUrl = new URL({
             original_url: url,
             code: crypto.randomBytes(6).toString('hex')
+        });
+        newUrl.save((err) => {
+            if (err) {
+                console.log(err);
+            }
+            let shorten = process.env.BASE_URL + '/' + newUrl.code;
+            return res.json({ URL: shorten });
         });
     }
     else {
         const newUrl = new URL({
             original_url: url,
-            code: req.params.code
+            code: req.query.code
+        });
+        newUrl.save((err) => {
+            if (err) {
+                console.log(err);
+            }
+            let shorten = process.env.BASE_URL + '/' + newUrl.code;
+            return res.json({ URL: shorten });
         });
     }
-    newUrl.save((err) => {
-        if (err) {
-            console.log(err);
-        }
-        let shorten = process.env.BASE_URL + '/' + newUrl.code;
-        return res.json({ URL: shorten });
-    });
+    
 });
 
 app.post('/create', (req, res) => {
     const filePath = path.join(__dirname, 'logo.png');
     console.log(filePath);
-    if (req.query.qr) {
-        //Generate QR code
-        qrcode.toFile('qrCode.png', req.body.url, {
-            color: {
-                dark: '#000000',  // QR code color
-                light: '#ffffff' // Background color
-            },
-            logo: 'C://Users//CHINMAY//Onedrive//Desktop//custom url//logo.png',  // path to your logo file
-            width: 400,
-            margin: 1
-        }, function (err) {
-            if (err) throw err
-            console.log('done')
-        })
-    }
+    // if (req.query.qr) {
+    //     //Generate QR code
+    //     qrcode.toFile('qrCode.png', req.body.url, {
+    //         color: {
+    //             dark: '#000000',  // QR code color
+    //             light: '#ffffff' // Background color
+    //         },
+    //         logo: 'C://Users//CHINMAY//Onedrive//Desktop//custom url//logo.png',  // path to your logo file
+    //         width: 400,
+    //         margin: 1
+    //     }, function (err) {
+    //         if (err) throw err
+    //         console.log('done')
+    //     })
+    // }
     if (req.query.expiry) {
         //Set expiry date
         const newUrl = new URL({
