@@ -17,12 +17,13 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
 const router = express.Router();
-
+//Universal 
 app.get('/', (req, res) => {
     console.log("Hello World");
     res.json({ message: "Success" });
 });
 
+//SHorten URL redirect with expiry check
 app.get('/:code', (req, res) => {
     code = req.params.code;
     URL.findOne({ code: code }, (err, url) => {
@@ -32,8 +33,8 @@ app.get('/:code', (req, res) => {
         if (url) {
             url.clicks++;
             url.save();
-            if(url.expiry){
-                if(url.expiry<Date.now()){
+            if (url.expiry && url.expiry != null) {
+                if (url.expiry < Date.now()) {
                     return res.status(404).json('URL expired');
                 }
             }
@@ -46,14 +47,15 @@ app.get('/:code', (req, res) => {
     });
 });
 
-app.get('/:code/clicks',(req,res)=>{
+//Get clicks
+app.get('/:code/clicks', (req, res) => {
     code = req.params.code;
     URL.findOne({ code: code }, (err, url) => {
         if (err) {
             console.log(err);
         }
         if (url) {
-            res.json({clicks:url.clicks});
+            res.json({ clicks: url.clicks });
         }
         else {
             return res.status(404).json('No URL found');
@@ -61,79 +63,63 @@ app.get('/:code/clicks',(req,res)=>{
     });
 })
 
+//Api to create a short url wihout expiry
 app.post('/api', (req, res) => {
     const url = req.query.link;
-    console.log(url);
-    console.log(req.query.code);
-    if (!req.query.code) {
-        const newUrl = new URL({
-            original_url: url,
-            code: crypto.randomBytes(6).toString('hex')
-        });
-        newUrl.save((err) => {
-            if (err) {
-                console.log(err);
-            }
-            let shorten = process.env.BASE_URL + '/' + newUrl.code;
-            return res.json({ URL: shorten });
-        });
-    }
-    else {
-        const newUrl = new URL({
-            original_url: url,
-            code: req.query.code
-        });
-        newUrl.save((err) => {
-            if (err) {
-                console.log(err);
-            }
-            let shorten = process.env.BASE_URL + '/' + newUrl.code;
-            return res.json({ URL: shorten });
-        });
-    }
-    
-});
-
-app.post('/create', (req, res) => {
-    const filePath = path.join(__dirname, 'logo.png');
-    console.log(filePath);
-    // if (req.query.qr) {
-    //     //Generate QR code
-    //     qrcode.toFile('qrCode.png', req.body.url, {
-    //         color: {
-    //             dark: '#000000',  // QR code color
-    //             light: '#ffffff' // Background color
-    //         },
-    //         logo: 'C://Users//CHINMAY//Onedrive//Desktop//custom url//logo.png',  // path to your logo file
-    //         width: 400,
-    //         margin: 1
-    //     }, function (err) {
-    //         if (err) throw err
-    //         console.log('done')
-    //     })
-    // }
-    if (req.query.expiry) {
-        //Set expiry date
-        const newUrl = new URL({
-            original_url: req.body.url,
-            code: crypto.randomBytes(6).toString('hex'),
-            expiry: req.body.expiry
-        });
-        console.log("created with expiry");
-        newUrl.save((err) => {
-            if (err) {
-                console.log(err);
-            }
-        });
+    const newUrl = new URL({
+        original_url: url,
+        code: req.query.code || crypto.randomBytes(6).toString('hex')
+    });
+    console.log(newUrl);
+    newUrl.save((err) => {
+        if (err) {
+            console.log(err.keyValue);
+            return res.json({ message: "Code already exists" })
+        }
         let shorten = process.env.BASE_URL + '/' + newUrl.code;
         return res.json({ URL: shorten });
-    }
-    else {
-        const newUrl = new URL({
-            original_url: req.body.url,
-            code: crypto.randomBytes(6).toString('hex')
-        });
-    }
+    });
+
+});
+
+
+
+app.post('/create', (req, res) => {
+console.log(req.body.code);
+    //Set expiry date
+    const newUrl = new URL({
+        original_url: req.body.url,
+        code: req.body.code || crypto.randomBytes(6).toString('hex'),
+        expiry: req.query.expiry || null
+    });
+    console.log("created with expiry");
+
+    newUrl.save((err) => {
+        if (err) {
+            console.log(err.keyValue);
+        }
+    });
+    let shorten = process.env.BASE_URL + '/' + newUrl.code;
+    // const filePath = path.join(__dirname, 'logo.png');
+    // console.log(filePath)
+    // res.json({ URL: shorten });
+    // if (req.query.qr) {
+    //     //     //Generate QR code
+    //     qrcode.toBuffer(req.body.url, {
+    //         color: {
+    //             dark: '#000000',  // QR code color
+    //             light: '#ffffff'  // Background color
+    //         },
+    //         width: 400,
+    //         margin: 1
+    //     }, function (err, buffer) {
+    //         if (err) throw err;
+    //         res.set('Content-Type', 'image/png');
+    //         res.send(buffer);
+    //         // console.log(buffer);
+    //     });
+    // }
+    res.json({ URL: shorten });
 
 });
 mongoose.set('strictQuery', true);
